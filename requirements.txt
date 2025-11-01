@@ -1,0 +1,19 @@
+# requirements.txt
+
+# Telegram Bot
+python-telegram-bot==20.7
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Migrations (опционально)
+alembic==1.13.0
+
+# Development tools (опционально)
+# pytest==7.4.3
+# black==23.11.0
+# flake8==6.1.0
