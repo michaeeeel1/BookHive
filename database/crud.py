@@ -381,33 +381,38 @@ def get_book_by_id(book_id: int) -> Optional[Book]:
                         .filter_by(id=book_id).first()
         return book
 
+
 def get_books_by_category(
         category_id: int,
         available_only: bool = True,
         limit: int = 10,
-        offset: int = 0,
+        offset: int = 0
 ) -> List[Book]:
     """
-        Получить книги категории (с пагинацией)
+    Получить книги категории (с пагинацией)
 
-        Args:
-            category_id: ID категории
-            available_only: Только доступные?
-            limit: Количество книг
-            offset: Смещение (для пагинации)
+    Args:
+        category_id: ID категории
+        available_only: Только доступные?
+        limit: Количество книг
+        offset: Смещение (для пагинации)
 
-        Returns:
-            Список книг
-        """
+    Returns:
+        Список книг
+    """
     with get_session() as session:
-        query = session.query(Book)\
-                        .options(joinedload(Book.category))\
-                        .filter_by(category_id=category_id)
-        if available_only:
-            query = query.filter(is_available=True)
+        query = session.query(Book) \
+            .options(joinedload(Book.category)) \
+            .filter_by(category_id=category_id)
 
-        books = query.order_by(desc(Book.created_at))\
-                    .limit(limit).offset(offset).all()
+        if available_only:
+            query = query.filter(Book.is_available == True)
+
+        books = query.order_by(desc(Book.created_at)) \
+            .limit(limit) \
+            .offset(offset) \
+            .all()
+
         return books
 
 def get_books_count_by_category(
@@ -428,7 +433,7 @@ def get_books_count_by_category(
         query = session.query(Book).filter_by(category_id=category_id)
 
         if available_only:
-            query = query.filter_by(is_available=True)
+            query = query.filter(Book.is_available == True)
 
         return query.count()
 
@@ -452,7 +457,7 @@ def get_all_books(
         query = session.query(Book).options(joinedload(Book.category))
 
         if available_only:
-            query = query.filter_by(is_available=True)
+            query = query.filter(Book.is_available == True)
 
         books = query.order_by(desc(Book.created_at))\
                     .limit(limit).offset(offset).all()
