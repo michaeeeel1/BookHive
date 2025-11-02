@@ -220,15 +220,3 @@ async def show_book_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def book_reserve_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Обработчик кнопки "Забронировать"
-
-    Пока просто заглушка
-    """
-    query = update.callback_query
-    await query.answer("🔖 Бронирование будет доступно скоро!", show_alert=True)
-
-    # В будущем здесь будет ConversationHandler для бронирования
-
-

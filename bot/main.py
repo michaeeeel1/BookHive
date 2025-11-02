@@ -24,7 +24,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search
+from bot.handlers import catalog, search, booking
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -221,6 +221,29 @@ def main():
 
     application.add_handler(search_conv_handler)
 
+    booking_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(booking.start_booking, pattern="^book_reserve_\d+$")
+        ],
+        states={
+            booking.SELECTING_DATE: [
+                CallbackQueryHandler(booking.handle_calendar)
+            ],
+            booking.ENTERING_COMMENT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, booking.handle_comment),
+                CallbackQueryHandler(booking.skip_comment, pattern="^skip_comment$"),
+                CallbackQueryHandler(booking.cancel_booking, pattern="^cancel_booking$")
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(booking.cancel_booking, pattern="^cancel_booking$"),
+            CommandHandler("start", start_handler)
+        ],
+        allow_reentry=True
+    )
+
+    application.add_handler(booking_conv_handler)
+
     # ============================================
     # COMMAND HANDLERS
     # ============================================
@@ -235,7 +258,6 @@ def main():
     # Обработчики каталога
     application.add_handler(CallbackQueryHandler(catalog.show_category_books, pattern="^category_\d+"))
     application.add_handler(CallbackQueryHandler(catalog.show_book_detail, pattern="^book_\d+"))
-    application.add_handler(CallbackQueryHandler(catalog.book_reserve_handler, pattern="^book_reserve_"))
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
