@@ -24,7 +24,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search, booking, my_bookings, new_books
+from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -136,21 +136,9 @@ async def main_menu_callback_handler(update: Update, context: ContextTypes):
         await new_books.show_new_books(update, context)
         return
 
-    responses = {
-        "personalized": "🎯 <b>Для меня</b>\n\nЗдесь будут персональные рекомендации!\n<i>В разработке...</i>",
-        "profile": "👤 <b>Профиль</b>\n\nЗдесь будет твой профиль!\n<i>В разработке...</i>",
-    }
-
-    response_text = responses.get(callback_data, "❓ Неизвестная команда")
-
-    keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_text(
-        response_text,
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
+    if callback_data == "personalized":
+        await personalized.show_personalized(update, context)
+        return
 
 async def back_to_main_menu_handler(update: Update, context: ContextTypes):
     """
@@ -249,6 +237,25 @@ def main():
     )
 
     application.add_handler(booking_conv_handler)
+
+    # ConversationHandler для настройки жанров
+    genres_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(personalized.setup_genres_start, pattern="^setup_genres$")
+        ],
+        states={
+            personalized.SELECTING_GENRES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, personalized.handle_genres_input)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(personalized.cancel_genres, pattern="^cancel_genres$"),
+            CommandHandler("start", start_handler)
+        ],
+        allow_reentry=True
+    )
+
+    application.add_handler(genres_conv_handler)
 
     # ============================================
     # COMMAND HANDLERS
