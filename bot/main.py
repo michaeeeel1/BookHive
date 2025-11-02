@@ -9,16 +9,18 @@
 """
 
 import logging
-from telegram import Update
+from telegram import Update, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
-    ContextTypes
+    ContextTypes,
+    CallbackQueryHandler
 )
 
 from config.settings import BOT_TOKEN
 from database import crud
+from bot.keyboards.main_menu import get_main_menu_keyboard
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 async def start_handler(update: Update, context: ContextTypes):
     """
-        Обработчик команды /start
+    Обработчик команды /start
 
-        Регистрирует пользователя и показывает приветствие
-        """
+    Регистрирует пользователя и показывает приветствие
+    """
     user = update.effective_user
     user_id = user.id
     user_name = user.first_name or user.first_name or 'Друг'
@@ -67,29 +69,27 @@ async def start_handler(update: Update, context: ContextTypes):
 
     welcome_message = (
         f"{greeting}\n\n"
-        f"📚 Добро пожаловать в <b>BookHive</b> - твой персональный помощник в мире книг!\n\n"
+        f"📚 Добро пожаловать в <b>BookHive</b>!\n\n"
         f"Я помогу тебе:\n"
         f"• 📖 Найти идеальную книгу\n"
         f"• 🔖 Забронировать её за пару кликов\n"
         f"• 🔔 Не забыть забрать (напомню!)\n"
         f"• 🎯 Получать рекомендации по твоему вкусу\n\n"
-        f"<b>Используй команды:</b>\n"
-        f"/start - Главное меню\n"
-        f"/help - Помощь\n\n"
-        f"<i>Главное меню скоро появится!</i>"
+        f"Выбери раздел 👇"
     )
 
     await update.message.reply_text(
         welcome_message,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_main_menu_keyboard()
     )
 
 async def help_handler(update: Update, context: ContextTypes):
     """
-        Обработчик команды /help
+    Обработчик команды /help
 
-        Показывает список доступных команд
-        """
+    Показывает список доступных команд
+    """
     help_text = (
         "📚 <b>BookHive - Помощь</b>\n\n"
         "<b>Доступные команды:</b>\n"
@@ -109,12 +109,63 @@ async def help_handler(update: Update, context: ContextTypes):
         parse_mode='HTML'
     )
 
+async def main_menu_callback_handler(update: Update, context: ContextTypes):
+    """
+    Обработчик нажатий на кнопки главного меню
+    """
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+
+    logger.info(f"User {query.from_user.id} pressed button: {callback_data}")
+
+    responses = {
+        "catalog": "📖 <b>Каталог</b>\n\nЗдесь будет список категорий книг!\n<i>В разработке...</i>",
+        "search": "🔍 <b>Поиск</b>\n\nЗдесь будет поиск книг!\n<i>В разработке...</i>",
+        "personalized": "🎯 <b>Для меня</b>\n\nЗдесь будут персональные рекомендации!\n<i>В разработке...</i>",
+        "my_bookings": "📋 <b>Мои брони</b>\n\nЗдесь будут твои брони!\n<i>В разработке...</i>",
+        "new_books": "🆕 <b>Новинки</b>\n\nЗдесь будут новые книги!\n<i>В разработке...</i>",
+        "profile": "👤 <b>Профиль</b>\n\nЗдесь будет твой профиль!\n<i>В разработке...</i>",
+    }
+
+    response_text = responses.get(callback_data, "❓ Неизвестная команда")
+
+    keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        response_text,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+async def back_to_main_menu_handler(update: Update, context: ContextTypes):
+    """
+    Обработчик кнопки "Назад в главное меню"
+    """
+    query = update.callback_query
+    await query.answer()
+
+    user_name = query.from_user.first_name or "Друг"
+
+    menu_text = (
+        f"📚 <b>Главное меню</b>\n\n"
+        f"Привет, {user_name}! Выбери раздел 👇"
+    )
+
+    await query.edit_message_text(
+        menu_text,
+        parse_mode='HTML',
+        reply_markup=get_main_menu_keyboard()
+    )
+
 async def error_handler(update: Update, context: ContextTypes):
     """
-        Обработчик ошибок
+    Обработчик ошибок
 
-        Логирует ошибки и уведомляет пользователя
-        """
+    Логирует ошибки и уведомляет пользователя
+    """
     logger.error(f"Update {update} caused error {context.error}")
 
     if update and update.effective_message:
@@ -143,6 +194,9 @@ def main():
 
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CommandHandler("help", help_handler))
+
+    app.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
+    app.add_handler(CallbackQueryHandler(main_menu_callback_handler))
 
     app.add_error_handler(error_handler)
 
