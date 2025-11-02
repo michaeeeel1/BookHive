@@ -21,6 +21,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
+from bot.handlers import catalog
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -120,8 +121,11 @@ async def main_menu_callback_handler(update: Update, context: ContextTypes):
 
     logger.info(f"User {query.from_user.id} pressed button: {callback_data}")
 
+    if callback_data == "catalog":
+        await catalog.show_catalog(update, context)
+        return
+
     responses = {
-        "catalog": "📖 <b>Каталог</b>\n\nЗдесь будет список категорий книг!\n<i>В разработке...</i>",
         "search": "🔍 <b>Поиск</b>\n\nЗдесь будет поиск книг!\n<i>В разработке...</i>",
         "personalized": "🎯 <b>Для меня</b>\n\nЗдесь будут персональные рекомендации!\n<i>В разработке...</i>",
         "my_bookings": "📋 <b>Мои брони</b>\n\nЗдесь будут твои брони!\n<i>В разработке...</i>",
@@ -194,6 +198,10 @@ def main():
 
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CommandHandler("help", help_handler))
+
+    app.add_handler(CallbackQueryHandler(catalog.show_category_books, pattern="^category_\d+"))
+    app.add_handler(CallbackQueryHandler(catalog.show_book_detail, pattern="^book_\d+"))
+    app.add_handler(CallbackQueryHandler(catalog.book_reserve_handler, pattern="^book_reserve_"))
 
     app.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
     app.add_handler(CallbackQueryHandler(main_menu_callback_handler))
