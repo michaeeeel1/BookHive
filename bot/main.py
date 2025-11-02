@@ -24,7 +24,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search, booking, my_bookings
+from bot.handlers import catalog, search, booking, my_bookings, new_books
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -132,9 +132,12 @@ async def main_menu_callback_handler(update: Update, context: ContextTypes):
         await my_bookings.show_my_bookings(update, context)
         return
 
+    if callback_data == "new_books":
+        await new_books.show_new_books(update, context)
+        return
+
     responses = {
         "personalized": "🎯 <b>Для меня</b>\n\nЗдесь будут персональные рекомендации!\n<i>В разработке...</i>",
-        "new_books": "🆕 <b>Новинки</b>\n\nЗдесь будут новые книги!\n<i>В разработке...</i>",
         "profile": "👤 <b>Профиль</b>\n\nЗдесь будет твой профиль!\n<i>В разработке...</i>",
     }
 
@@ -266,6 +269,9 @@ def main():
     application.add_handler(CallbackQueryHandler(my_bookings.show_booking_detail, pattern="^booking_detail_\d+$"))
     application.add_handler(CallbackQueryHandler(my_bookings.cancel_booking_confirm, pattern="^cancel_booking_\d+$"))
     application.add_handler(CallbackQueryHandler(my_bookings.cancel_booking_execute, pattern="^confirm_cancel_\d+$"))
+
+    # Обработчики "Новые книги"
+    application.add_handler(CallbackQueryHandler(new_books.show_new_books, pattern="^new_books$"))
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))

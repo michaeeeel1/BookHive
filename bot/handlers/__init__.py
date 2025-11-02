@@ -7,5 +7,6 @@ from . import catalog
 from . import search
 from . import booking
 from . import my_bookings
+from . import new_books
 
-__all__ = ['catalog', 'search', 'booking', 'my_bookings']
+__all__ = ['catalog', 'search', 'booking', 'my_bookings', 'new_books']
