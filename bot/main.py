@@ -18,6 +18,7 @@ from telegram.ext import (
 )
 
 from config.settings import BOT_TOKEN
+from database import crud
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -39,15 +40,43 @@ async def start_handler(update: Update, context: ContextTypes):
 
     logger.info(f"User {user_id} ({user_name}) started the bot")
 
+    try:
+        # Проверяем есть ли пользователь в БД
+        db_user = crud.get_user_by_telegram_id(user_id)
+
+        if db_user:
+            # Пользователь уже существует
+            logger.info(f"User {user_id} already registered")
+            greeting = f"С возвращением, {user_name}! 👋"
+        else:
+            # Новый пользователь - регистрируем
+            db_user = crud.create_user(
+                telegram_id=user_id,
+                name=user_name,
+                favorite_genres=[]
+            )
+            logger.info(f"User {user_id} registered")
+            greeting = f"Привет, {user_name}! 🎉"
+
+    except Exception as e:
+        logger.error(f"Error registering user {user_id}: {e}")
+        await update.message.reply_text(
+            "❌ Ошибка при регистрации. Попробуй позже."
+        )
+        return
+
     welcome_message = (
-        f"👋 Привет, {user_name}!\n\n"
+        f"{greeting}\n\n"
         f"📚 Добро пожаловать в <b>BookHive</b> - твой персональный помощник в мире книг!\n\n"
         f"Я помогу тебе:\n"
         f"• 📖 Найти идеальную книгу\n"
         f"• 🔖 Забронировать её за пару кликов\n"
         f"• 🔔 Не забыть забрать (напомню!)\n"
         f"• 🎯 Получать рекомендации по твоему вкусу\n\n"
-        f"<i>Бот в разработке... Скоро здесь будет меню!</i>"
+        f"<b>Используй команды:</b>\n"
+        f"/start - Главное меню\n"
+        f"/help - Помощь\n\n"
+        f"<i>Главное меню скоро появится!</i>"
     )
 
     await update.message.reply_text(
@@ -66,7 +95,13 @@ async def help_handler(update: Update, context: ContextTypes):
         "<b>Доступные команды:</b>\n"
         "/start - Начать работу с ботом\n"
         "/help - Показать эту справку\n\n"
-        "<i>Больше функций скоро появится!</i>"
+        "<b>Что умеет бот:</b>\n"
+        "• Просмотр каталога книг по категориям\n"
+        "• Поиск книг по названию и автору\n"
+        "• Бронирование книг\n"
+        "• Персональные рекомендации\n"
+        "• Напоминания о бронях\n\n"
+        "<i>Больше функций скоро!</i>"
     )
 
     await update.message.reply_text(
