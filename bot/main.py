@@ -24,7 +24,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized
+from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized, profile
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -138,6 +138,10 @@ async def main_menu_callback_handler(update: Update, context: ContextTypes):
 
     if callback_data == "personalized":
         await personalized.show_personalized(update, context)
+        return
+
+    if callback_data == "profile":
+        await profile.show_profile(update, context)
         return
 
 async def back_to_main_menu_handler(update: Update, context: ContextTypes):
@@ -279,6 +283,9 @@ def main():
 
     # Обработчики "Новые книги"
     application.add_handler(CallbackQueryHandler(new_books.show_new_books, pattern="^new_books$"))
+
+    # Обработчик переключения уведомлений
+    application.add_handler(CallbackQueryHandler(profile.toggle_notifications, pattern="^toggle_notifications$"))
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
