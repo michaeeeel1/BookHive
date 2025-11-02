@@ -4,5 +4,6 @@
 """
 
 from . import catalog
+from . import search
 
-__all__ = ['catalog']
+__all__ = ['catalog', 'search']

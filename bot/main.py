@@ -15,13 +15,16 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    CallbackQueryHandler
+    CallbackQueryHandler,
+    MessageHandler,
+    ConversationHandler,
+    filters
 )
 
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog
+from bot.handlers import catalog, search
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -126,7 +129,6 @@ async def main_menu_callback_handler(update: Update, context: ContextTypes):
         return
 
     responses = {
-        "search": "🔍 <b>Поиск</b>\n\nЗдесь будет поиск книг!\n<i>В разработке...</i>",
         "personalized": "🎯 <b>Для меня</b>\n\nЗдесь будут персональные рекомендации!\n<i>В разработке...</i>",
         "my_bookings": "📋 <b>Мои брони</b>\n\nЗдесь будут твои брони!\n<i>В разработке...</i>",
         "new_books": "🆕 <b>Новинки</b>\n\nЗдесь будут новые книги!\n<i>В разработке...</i>",
@@ -192,27 +194,66 @@ def main():
         print("Получи токен у @BotFather и добавь в .env\n")
         return
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).build()
 
     logger.info("Registering handlers...")
 
-    app.add_handler(CommandHandler("start", start_handler))
-    app.add_handler(CommandHandler("help", help_handler))
+    # ============================================
+    # CONVERSATION HANDLERS (должны быть первыми!)
+    # ============================================
 
-    app.add_handler(CallbackQueryHandler(catalog.show_category_books, pattern="^category_\d+"))
-    app.add_handler(CallbackQueryHandler(catalog.show_book_detail, pattern="^book_\d+"))
-    app.add_handler(CallbackQueryHandler(catalog.book_reserve_handler, pattern="^book_reserve_"))
+    # ConversationHandler для поиска
+    search_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(search.start_search, pattern="^search$")
+        ],
+        states={
+            search.WAITING_FOR_QUERY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, search.handle_search_query)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(search.cancel_search, pattern="^cancel_search$"),
+            CommandHandler("start", start_handler)
+        ],
+        allow_reentry=True
+    )
 
-    app.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(main_menu_callback_handler))
+    application.add_handler(search_conv_handler)
 
-    app.add_error_handler(error_handler)
+    # ============================================
+    # COMMAND HANDLERS
+    # ============================================
+
+    application.add_handler(CommandHandler("start", start_handler))
+    application.add_handler(CommandHandler("help", help_handler))
+
+    # ============================================
+    # CALLBACK HANDLERS
+    # ============================================
+
+    # Обработчики каталога
+    application.add_handler(CallbackQueryHandler(catalog.show_category_books, pattern="^category_\d+"))
+    application.add_handler(CallbackQueryHandler(catalog.show_book_detail, pattern="^book_\d+"))
+    application.add_handler(CallbackQueryHandler(catalog.book_reserve_handler, pattern="^book_reserve_"))
+
+    # Обработчик кнопки "Главное меню"
+    application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
+
+    # Обработчик всех остальных кнопок главного меню
+    application.add_handler(CallbackQueryHandler(main_menu_callback_handler))
+
+    # ============================================
+    # ERROR HANDLER
+    # ============================================
+
+    application.add_error_handler(error_handler)
 
     logger.info("Handlers registered successfully")
 
     logger.info("Bot is starting polling...")
 
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
