@@ -24,7 +24,11 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized, profile, admin
+from bot.handlers import (
+    catalog, search, booking,
+    my_bookings, new_books, personalized,
+    profile, admin, notifications
+)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -389,6 +393,7 @@ def main():
     application.add_handler(CommandHandler("start", start_handler))
     application.add_handler(CommandHandler("help", help_handler))
     application.add_handler(CommandHandler("admin", admin.show_admin_panel))
+    application.add_handler(CommandHandler("test_notifications", admin.test_notifications))
 
     # ============================================
     # CALLBACK HANDLERS
@@ -442,6 +447,14 @@ def main():
     # ============================================
 
     application.add_error_handler(error_handler)
+
+    # ============================================
+    # SETUP JOBS (УВЕДОМЛЕНИЯ)
+    # ============================================
+
+    logger.info("Setting up periodic jobs...")
+    notifications.setup_jobs(application)
+    logger.info("Periodic jobs configured successfully")
 
     logger.info("Handlers registered successfully")
 

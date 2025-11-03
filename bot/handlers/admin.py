@@ -17,6 +17,7 @@ from telegram.ext import ContextTypes
 
 from database import crud
 from config.settings import ADMIN_IDS
+from bot.handlers import notifications
 
 logger = logging.getLogger(__name__)
 
@@ -334,3 +335,44 @@ async def show_detailed_stats(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         logger.error(f"Error showing detailed stats: {e}")
         await query.edit_message_text("❌ Ошибка загрузки статистики")
+
+
+async def test_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Протестировать уведомления (только админ)
+
+    Команда: /test_notifications
+    """
+    user_id = update.effective_user.id
+
+    if not is_admin(user_id):
+        await update.message.reply_text("❌ У вас нет прав администратора.")
+        return
+
+    logger.info(f"Admin {user_id} testing notifications")
+
+    await update.message.reply_text(
+        "🔔 Запуск тестовых уведомлений...\n\n"
+        "Проверяем:\n"
+        "• Напоминания о бронях\n"
+        "• Уведомления о новинках\n\n"
+        "Результат придёт в течение минуты."
+    )
+
+    try:
+        # Тестируем напоминания о бронях
+        await notifications.check_booking_reminders(context)
+
+        # Тестируем уведомления о новинках
+        await notifications.notify_new_books(context)
+
+        await update.message.reply_text(
+            "✅ Тестовые уведомления отправлены!\n\n"
+            "Проверьте логи для деталей."
+        )
+
+    except Exception as e:
+        logger.error(f"Error testing notifications: {e}")
+        await update.message.reply_text(
+            f"❌ Ошибка при тестировании:\n{str(e)}"
+        )

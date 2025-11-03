@@ -2,6 +2,7 @@
 
 # Telegram Bot
 python-telegram-bot==20.7
+APScheduler==3.10.4
 
 # Database
 sqlalchemy==2.0.23
