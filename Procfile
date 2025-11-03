@@ -1,1 +1,1 @@
-worker: python run.py
+worker: python create_db.py && python seed_db.py && python run.py
