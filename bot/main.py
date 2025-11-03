@@ -164,6 +164,127 @@ async def back_to_main_menu_handler(update: Update, context: ContextTypes):
         reply_markup=get_main_menu_keyboard()
     )
 
+
+async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик неизвестных сообщений
+
+    Срабатывает когда пользователь пишет что-то вне диалога
+    """
+    user_id = update.effective_user.id
+    message_text = update.message.text.lower()
+
+    logger.info(f"User {user_id} sent unknown message: {message_text}")
+
+    # Проверяем есть ли пользователь в БД
+    user = crud.get_user_by_telegram_id(user_id)
+
+    if not user:
+        # Пользователь не зарегистрирован
+        text = (
+            "👋 Привет!\n\n"
+            "Я бот BookHive для бронирования книг.\n\n"
+            "Для начала работы нажми /start"
+        )
+        reply_markup = None
+    else:
+        # Умные подсказки на основе текста
+        if any(word in message_text for word in ['привет', 'hello', 'hi', 'здравствуй']):
+            text = (
+                f"👋 Привет, {user.name}!\n\n"
+                "Рад снова тебя видеть! Чем могу помочь?"
+            )
+        elif any(word in message_text for word in ['помощь', 'help', 'справка']):
+            text = (
+                "📚 <b>Вот что я умею:</b>\n\n"
+                "📖 Каталог - просмотр книг по категориям\n"
+                "🔍 Поиск - найти книгу быстро\n"
+                "🔖 Бронирование - забронировать книгу\n"
+                "📋 Мои брони - управление бронями\n\n"
+                "Используй команду /help для подробностей"
+            )
+        elif any(word in message_text for word in ['книга', 'книги', 'book']):
+            text = (
+                "📚 Ищешь книгу?\n\n"
+                "• Просмотри каталог: нажми 📖 Каталог\n"
+                "• Или используй поиск: нажми 🔍 Поиск\n"
+                "• Смотри новинки: нажми 🆕 Новинки"
+            )
+        elif any(word in message_text for word in ['бронь', 'брони', 'booking']):
+            text = (
+                "📋 Управление бронями:\n\n"
+                "• Посмотреть свои брони: нажми 📋 Мои брони\n"
+                "• Забронировать книгу: найди книгу в каталоге"
+            )
+        elif any(word in message_text for word in ['спасибо', 'thanks', 'thank']):
+            text = (
+                "😊 Пожалуйста!\n\n"
+                "Обращайся, если что нужно! 📚"
+            )
+        elif any(word in message_text for word in ['пока', 'bye', 'goodbye']):
+            text = (
+                "👋 До встречи!\n\n"
+                "Возвращайся за книгами! 📚"
+            )
+        else:
+            # Обычный ответ
+            import random
+            responses = [
+                (
+                    "🤔 Хм, я не совсем понял.\n\n"
+                    "Используй кнопки меню или команды! 😊"
+                ),
+                (
+                    "❓ Не могу разобрать это сообщение.\n\n"
+                    "Попробуй использовать кнопки ниже 👇"
+                ),
+                (
+                    "💬 Я понимаю только команды и кнопки.\n\n"
+                    "Воспользуйся главным меню!"
+                )
+            ]
+            text = random.choice(responses)
+
+        # Добавляем главное меню
+        from bot.keyboards.main_menu import get_main_menu_keyboard
+        reply_markup = get_main_menu_keyboard()
+
+    await update.message.reply_text(
+        text,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+async def handle_unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик неизвестных команд
+
+    Срабатывает когда пользователь вводит команду, которой нет
+    """
+    user_id = update.effective_user.id
+    command = update.message.text
+
+    logger.info(f"User {user_id} sent unknown command: {command}")
+
+    text = (
+        f"❓ <b>Неизвестная команда:</b> {command}\n\n"
+        "<b>Доступные команды:</b>\n"
+        "/start - Главное меню\n"
+        "/help - Справка\n"
+        "/about - О боте\n"
+        "/stats - Моя статистика\n"
+        "/admin - Админ-панель\n\n"
+        "Или используй кнопки главного меню 👇"
+    )
+
+    from bot.keyboards.main_menu import get_main_menu_keyboard
+
+    await update.message.reply_text(
+        text,
+        parse_mode='HTML',
+        reply_markup=get_main_menu_keyboard()
+    )
+
 async def error_handler(update: Update, context: ContextTypes):
     """
     Обработчик ошибок
@@ -292,6 +413,21 @@ def main():
 
     # Обработчик всех остальных кнопок главного меню
     application.add_handler(CallbackQueryHandler(main_menu_callback_handler))
+
+    # ============================================
+    # UNKNOWN MESSAGE HANDLERS
+    # ============================================
+
+    application.add_handler(MessageHandler(
+        filters.COMMAND & ~filters.Regex(r'^/(start|help|about|stats|admin|test_notifications)$'),
+        handle_unknown_command
+    ))
+
+    # Обработчик всех текстовых сообщений (ловит всё остальное)
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        handle_unknown_message
+    ))
 
     # ============================================
     # ERROR HANDLER
