@@ -29,12 +29,9 @@ from bot.handlers import (
     my_bookings, new_books, personalized,
     profile, admin, notifications
 )
+from bot.utils.logger import setup_logger
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger('BookHive', 'bookhive.log', logging.INFO)
 
 # HANDLERS
 
@@ -92,24 +89,29 @@ async def start_handler(update: Update, context: ContextTypes):
         reply_markup=get_main_menu_keyboard()
     )
 
-async def help_handler(update: Update, context: ContextTypes):
-    """
-    Обработчик команды /help
 
-    Показывает список доступных команд
-    """
+async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /help"""
     help_text = (
         "📚 <b>BookHive - Помощь</b>\n\n"
         "<b>Доступные команды:</b>\n"
-        "/start - Начать работу с ботом\n"
-        "/help - Показать эту справку\n\n"
+        "/start - 🏠 Начать работу с ботом / Главное меню\n"
+        "/help - ❓ Показать эту справку\n"
+        "/about - ℹ️ О боте и статистика\n"
+        "/stats - 📊 Ваша личная статистика\n"
         "<b>Что умеет бот:</b>\n"
-        "• Просмотр каталога книг по категориям\n"
-        "• Поиск книг по названию и автору\n"
-        "• Бронирование книг\n"
-        "• Персональные рекомендации\n"
-        "• Напоминания о бронях\n\n"
-        "<i>Больше функций скоро!</i>"
+        "📖 <b>Каталог</b> - просмотр книг по категориям\n"
+        "🔍 <b>Поиск</b> - найти книгу по названию или автору\n"
+        "🔖 <b>Бронирование</b> - забронировать книгу на удобную дату\n"
+        "📋 <b>Мои брони</b> - управление вашими бронями\n"
+        "🎯 <b>Для меня</b> - персональные рекомендации по жанрам\n"
+        "🆕 <b>Новинки</b> - последние добавленные книги\n"
+        "👤 <b>Профиль</b> - ваша статистика и настройки\n\n"
+        "<b>Уведомления:</b>\n"
+        "🔔 Бот напомнит о брони за день до получения\n"
+        "📬 Еженедельные новости о новых книгах\n\n"
+        "<b>Нужна помощь?</b>\n"
+        "Напишите @megaknight24 или откройте Issue на GitHub"
     )
 
     await update.message.reply_text(
@@ -289,18 +291,84 @@ async def handle_unknown_command(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=get_main_menu_keyboard()
     )
 
-async def error_handler(update: Update, context: ContextTypes):
+
+async def about_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик команды /about
+
+    Информация о боте
+    """
+    stats = crud.get_database_stats()
+
+    text = (
+        "📚 <b>О боте BookHive</b>\n\n"
+        "BookHive - это твой персональный помощник для управления бронированием книг.\n\n"
+        "<b>Возможности:</b>\n"
+        "• 📖 Каталог из 6 категорий\n"
+        "• 🔍 Умный поиск по названию и автору\n"
+        "• 🔖 Простое бронирование с календарём\n"
+        "• 🎯 Персональные рекомендации\n"
+        "• 🔔 Напоминания о бронях\n"
+        "• 📊 Личная статистика\n\n"
+        
+        "<b>Версия:</b> 1.0.0\n"
+        "<b>Разработчик:</b> @Michaeeeel1\n"
+        "<b>GitHub:</b> github.com/michaeeeel1/BookHive\n\n"
+        "<i>Сделано с ❤️ для любителей книг</i>"
+    )
+
+    keyboard = [[
+        InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")
+    ]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        text,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработчик ошибок
 
-    Логирует ошибки и уведомляет пользователя
+    Логирует ошибки и уведомляет пользователя + админа
     """
-    logger.error(f"Update {update} caused error {context.error}")
+    logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
 
+    # Уведомление пользователю
     if update and update.effective_message:
-        await update.effective_message.reply_text(
-            "❌ Произошла ошибка. Попробуй позже или напиши /start"
+        try:
+            await update.effective_message.reply_text(
+                "❌ Произошла ошибка. Мы уже работаем над её исправлением.\n"
+                "Попробуйте позже или напишите /start"
+            )
+        except:
+            pass
+
+    # Уведомление админу (если есть)
+    from config.settings import ADMIN_IDS
+    if ADMIN_IDS:
+        error_message = (
+            f"🚨 <b>Ошибка в боте!</b>\n\n"
+            f"<b>Update:</b>\n<code>{update}</code>\n\n"
+            f"<b>Error:</b>\n<code>{context.error}</code>"
         )
+
+        # Обрезаем если слишком длинное
+        if len(error_message) > 4000:
+            error_message = error_message[:3900] + "\n\n<i>... (truncated)</i>"
+
+        for admin_id in ADMIN_IDS[:1]:  # Отправляем только первому админу
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=error_message,
+                    parse_mode='HTML'
+                )
+            except:
+                pass
 
 # ГЛАВНАЯ ФУНКЦИЯ
 
@@ -394,6 +462,8 @@ def main():
     application.add_handler(CommandHandler("help", help_handler))
     application.add_handler(CommandHandler("admin", admin.show_admin_panel))
     application.add_handler(CommandHandler("test_notifications", admin.test_notifications))
+    application.add_handler(CommandHandler("stats", profile.show_user_stats))
+    application.add_handler(CommandHandler("about", about_handler))
 
     # ============================================
     # CALLBACK HANDLERS
@@ -423,6 +493,8 @@ def main():
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
+
+    application.add_handler(CallbackQueryHandler(profile.show_user_stats, pattern="^user_stats$"))
 
     # Обработчик всех остальных кнопок главного меню
     application.add_handler(CallbackQueryHandler(main_menu_callback_handler))
