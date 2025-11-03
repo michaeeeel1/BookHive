@@ -20,7 +20,7 @@ import logging
 from datetime import date, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
+from bot.utils.calendar import create_calendar, parse_calendar_callback
 
 from database import crud
 
@@ -83,10 +83,7 @@ async def start_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['booking_book_title'] = book.title
 
         # Показываем календарь
-        calendar, step = DetailedTelegramCalendar(
-            min_date=date.today(),
-            max_date=date.today() + timedelta(days=30)
-        ).build()
+        calendar_keyboard = create_calendar()
 
         text = (
             f"🔖 <b>Бронирование книги</b>\n\n"
@@ -100,7 +97,7 @@ async def start_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             text,
             parse_mode='HTML',
-            reply_markup=calendar
+            reply_markup=calendar_keyboard
         )
 
         return SELECTING_DATE
@@ -114,33 +111,48 @@ async def start_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_calendar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Обработать выбор даты в календаре
-    """
+    """Обработать выбор даты в календаре"""
     query = update.callback_query
 
-    result, key, step = DetailedTelegramCalendar(
-        min_date=date.today(),
-        max_date=date.today() + timedelta(days=30)
-    ).process(query.data)
-
-    if not result and key:
-        # Продолжаем выбор даты
-        await query.edit_message_reply_markup(reply_markup=key)
+    # Игнорируем служебные кнопки
+    if query.data == "ignore":
+        await query.answer()
         return SELECTING_DATE
-    elif result:
+
+    # Парсим callback
+    parsed = parse_calendar_callback(query.data)
+
+    if not parsed:
+        await query.answer()
+        return SELECTING_DATE
+
+    action = parsed[0]
+
+    if action == "month":
+        # Переключение месяца
+        year = parsed[1]
+        month = parsed[2]
+
+        calendar_keyboard = create_calendar(year, month)
+
+        await query.edit_message_reply_markup(reply_markup=calendar_keyboard)
+        await query.answer()
+        return SELECTING_DATE
+
+    elif action == "day":
         # Дата выбрана
         await query.answer()
 
-        selected_date = result
+        year = parsed[1]
+        month = parsed[2]
+        day = parsed[3]
+
+        selected_date = date(year, month, day)
 
         # Проверка что дата не в прошлом
         if selected_date < date.today():
-            await query.edit_message_text(
-                "❌ Нельзя выбрать дату в прошлом. Попробуйте ещё раз.",
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            await query.answer("❌ Нельзя выбрать дату в прошлом", show_alert=True)
+            return SELECTING_DATE
 
         # Сохраняем дату
         context.user_data['booking_pickup_date'] = selected_date
@@ -170,7 +182,6 @@ async def handle_calendar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         return ENTERING_COMMENT
-
 
 async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
