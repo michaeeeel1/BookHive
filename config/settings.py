@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from typing import List
 
 load_dotenv()
-
+logger = logging.getLogger(__name__)
 # BOT SETTINGS
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -22,13 +22,27 @@ if not BOT_TOKEN:
 
 # DATABASE SETTINGS
 
-DB_USER = os.getenv("DB_USER", "bookhive_user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "bookhive_secret_123")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "bookhive")
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if DATABASE_URL:
+    # Используем DATABASE_URL (для Railway, Render, Heroku)
+    # Заменяем postgres:// на postgresql:// если нужно
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+    logger.info("✅ Using DATABASE_URL from environment")
+else:
+    # Используем отдельные параметры (для локальной разработки)
+    DB_USER = os.getenv('DB_USER', 'bookhive_user')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', 'bookhive_secret_123')
+    DB_HOST = os.getenv('DB_HOST', 'localhost')
+    DB_PORT = os.getenv('DB_PORT', '5432')
+    DB_NAME = os.getenv('DB_NAME', 'bookhive')
+
+    # Формируем DATABASE_URL
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+    logger.info(f"✅ Database config: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # ADMIN SETTINGS
 

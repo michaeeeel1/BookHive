@@ -11,8 +11,9 @@ ROOT_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import QueuePool
+from contextlib import contextmanager
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.pool import NullPool
 import logging
 
 from config.settings import DATABASE_URL
@@ -25,13 +26,12 @@ Base = declarative_base()
 
 engine = create_engine(
     DATABASE_URL,
-    echo=False, # True = показывать SQL запросы
-    pool_pre_ping=True,
-    poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
-    pool_recycle=3600,
+    poolclass=NullPool,  # Важно для Railway/Render
+    echo=False,
+    connect_args={
+        "connect_timeout": 10,
+        "options": "-c timezone=utc"
+    }
 )
 
 logger.info("Database engine created")
@@ -39,36 +39,50 @@ logger.info("Database engine created")
 # SESSION MAKER
 
 SessionLocal = sessionmaker(
-    bind=engine,
     autocommit=False,
     autoflush=False,
-    expire_on_commit=False
+    bind=engine
 )
 
 logger.info("Session maker created")
 
 # FUNCTIONS
 
-def get_session():
-    """Получить новую сессию"""
-    return SessionLocal()
-
-def test_connection():
+@contextmanager
+def get_session() -> Session:
     """
-    Проверить подключение к БД
+    Context manager для работы с сессией БД
+
+    Использование:
+        with get_session() as session:
+            user = session.query(User).first()
+    """
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Database session error: {e}")
+        raise
+    finally:
+        session.close()
+
+def test_connection() -> bool:
+    """
+    Проверить подключение к базе данных
 
     Returns:
-         True если успешно, False иначе
+        True если подключение успешно, False иначе
     """
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        logger.info("✅ Database connection test: SUCCESS")
+        with engine.connect() as connection:
+            connection.execute("SELECT 1")
+        logger.info("✅ Database connection successful")
         return True
     except Exception as e:
-        logger.error(f"❌ Database connection test: FAILED - {e}")
+        logger.error(f"❌ Database connection failed: {e}")
         return False
-
 
 def create_tables():
     """
