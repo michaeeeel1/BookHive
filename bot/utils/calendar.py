@@ -9,6 +9,8 @@ import calendar
 from datetime import date, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.handlers.common import cancel_operation
+
 
 def create_calendar(year=None, month=None):
     """
@@ -49,6 +51,7 @@ def create_calendar(year=None, month=None):
         InlineKeyboardButton(day, callback_data="ignore")
         for day in week_days
     ])
+
 
     # Получаем календарь месяца
     month_calendar = calendar.monthcalendar(year, month)
@@ -113,6 +116,10 @@ def create_calendar(year=None, month=None):
 
     if nav_row:
         keyboard.append(nav_row)
+
+    keyboard.append([
+        InlineKeyboardButton("❌ Отменить бронирование", callback_data="cancel_booking")
+    ])
 
     return InlineKeyboardMarkup(keyboard)
 

@@ -114,6 +114,29 @@ async def handle_calendar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработать выбор даты в календаре"""
     query = update.callback_query
 
+    if query.data == "cancel_booking":
+        await query.answer()
+
+        logger.info(f"User {query.from_user.id} cancelled booking from calendar")
+
+        from bot.keyboards.main_menu import get_main_menu_keyboard
+
+        text = (
+            "❌ <b>Бронирование отменено</b>\n\n"
+            "Вы можете вернуться к книге через каталог."
+        )
+
+        await query.edit_message_text(
+            text,
+            parse_mode='HTML',
+            reply_markup=get_main_menu_keyboard()
+        )
+
+        # Очищаем context
+        context.user_data.clear()
+
+        return ConversationHandler.END
+
     # Игнорируем служебные кнопки
     if query.data == "ignore":
         await query.answer()
