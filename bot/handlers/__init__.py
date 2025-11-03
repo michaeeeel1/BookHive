@@ -12,7 +12,9 @@ from . import personalized
 from . import profile
 from . import admin
 from . import notifications
+from . import common
 
 __all__ = ['catalog', 'search', 'booking',
            'my_bookings', 'new_books', 'personalized',
-           'profile', 'admin', 'notifications']
+           'profile', 'admin', 'notifications',
+           'common']

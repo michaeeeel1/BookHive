@@ -27,7 +27,8 @@ from bot.keyboards.main_menu import get_main_menu_keyboard
 from bot.handlers import (
     catalog, search, booking,
     my_bookings, new_books, personalized,
-    profile, admin, notifications
+    profile, admin, notifications,
+    common
 )
 from bot.utils.logger import setup_logger
 
@@ -405,9 +406,18 @@ def main():
         },
         fallbacks=[
             CallbackQueryHandler(search.cancel_search, pattern="^cancel_search$"),
-            CommandHandler("start", start_handler)
+            # ДОБАВЬ ЭТИ СТРОКИ:
+            CommandHandler("start", common.cancel_operation),
+            CommandHandler("help", common.cancel_operation),
+            CommandHandler("about", common.cancel_operation),
+            CommandHandler("stats", common.cancel_operation),
+            CommandHandler("admin", common.cancel_operation),
+            MessageHandler(filters.PHOTO, common.handle_photo_in_conversation),
+            MessageHandler(filters.Document.ALL, common.handle_document_in_conversation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),  # Любые другие команды
         ],
-        allow_reentry=True
+        allow_reentry=True,
+        per_message=False
     )
 
     application.add_handler(search_conv_handler)
@@ -428,9 +438,18 @@ def main():
         },
         fallbacks=[
             CallbackQueryHandler(booking.cancel_booking, pattern="^cancel_booking$"),
-            CommandHandler("start", start_handler)
+            # ДОБАВЬ ЭТИ СТРОКИ:
+            CommandHandler("start", common.cancel_operation),
+            CommandHandler("help", common.cancel_operation),
+            CommandHandler("about", common.cancel_operation),
+            CommandHandler("stats", common.cancel_operation),
+            CommandHandler("admin", common.cancel_operation),
+            MessageHandler(filters.PHOTO, common.handle_photo_in_conversation),
+            MessageHandler(filters.Document.ALL, common.handle_document_in_conversation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),
         ],
-        allow_reentry=True
+        allow_reentry=True,
+        per_message=False
     )
 
     application.add_handler(booking_conv_handler)
@@ -447,9 +466,18 @@ def main():
         },
         fallbacks=[
             CallbackQueryHandler(personalized.cancel_genres, pattern="^cancel_genres$"),
-            CommandHandler("start", start_handler)
+            # ДОБАВЬ ЭТИ СТРОКИ:
+            CommandHandler("start", common.cancel_operation),
+            CommandHandler("help", common.cancel_operation),
+            CommandHandler("about", common.cancel_operation),
+            CommandHandler("stats", common.cancel_operation),
+            CommandHandler("admin", common.cancel_operation),
+            MessageHandler(filters.PHOTO, common.handle_photo_in_conversation),
+            MessageHandler(filters.Document.ALL, common.handle_document_in_conversation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),
         ],
-        allow_reentry=True
+        allow_reentry=True,
+        per_message=False
     )
 
     application.add_handler(genres_conv_handler)
