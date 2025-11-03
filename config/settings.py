@@ -32,7 +32,7 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NA
 
 # ADMIN SETTINGS
 
-ADMIN_IDS_STR = os.getenv("ADMIN_IDS_STR", "")
+ADMIN_IDS_STR = os.getenv("ADMIN_IDS", "")
 ADMIN_IDS: List[int] = [
     int(id.strip())
     for id in ADMIN_IDS_STR.split(",")

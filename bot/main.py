@@ -24,7 +24,7 @@ from telegram.ext import (
 from config.settings import BOT_TOKEN
 from database import crud
 from bot.keyboards.main_menu import get_main_menu_keyboard
-from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized, profile
+from bot.handlers import catalog, search, booking, my_bookings, new_books, personalized, profile, admin
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -388,6 +388,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start_handler))
     application.add_handler(CommandHandler("help", help_handler))
+    application.add_handler(CommandHandler("admin", admin.show_admin_panel))
 
     # ============================================
     # CALLBACK HANDLERS
@@ -407,6 +408,13 @@ def main():
 
     # Обработчик переключения уведомлений
     application.add_handler(CallbackQueryHandler(profile.toggle_notifications, pattern="^toggle_notifications$"))
+
+    # Обработчики админ-панели
+    application.add_handler(CallbackQueryHandler(admin.show_admin_panel, pattern="^admin_panel$"))
+    application.add_handler(CallbackQueryHandler(admin.show_all_bookings, pattern="^admin_bookings$"))
+    application.add_handler(CallbackQueryHandler(admin.show_all_books, pattern="^admin_books$"))
+    application.add_handler(CallbackQueryHandler(admin.show_all_users, pattern="^admin_users$"))
+    application.add_handler(CallbackQueryHandler(admin.show_detailed_stats, pattern="^admin_detailed_stats$"))
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))
