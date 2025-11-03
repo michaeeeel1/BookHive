@@ -183,7 +183,6 @@ async def show_book_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Добавляем описание если есть
         if book.description:
-            # Обрезаем длинное описание
             description = book.description
             if len(description) > 300:
                 description = description[:297] + "..."
@@ -199,19 +198,37 @@ async def show_book_detail(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if book.is_new:
             text += "\n🆕 <b>Новинка!</b>"
 
-        # Показываем карточку с кнопками
-        await query.edit_message_text(
-            text,
-            parse_mode='HTML',
-            reply_markup=get_book_detail_keyboard(book.id, book.category_id)
-        )
+        # Клавиатура
+        reply_markup = get_book_detail_keyboard(book.id, book.category_id)
 
-        # Если есть обложка - можно отправить фото (опционально)
-        # if book.cover_photo_id:
-        #     await query.message.reply_photo(
-        #         photo=book.cover_photo_id,
-        #         caption="Обложка книги"
-        #     )
+        # ДОБАВЛЕНО: Если есть фото - отправляем с фото
+        if book.cover_photo_id:
+            try:
+                # Удаляем старое сообщение
+                await query.message.delete()
+
+                # Отправляем новое с фото
+                await query.message.reply_photo(
+                    photo=book.cover_photo_id,
+                    caption=text,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+            except Exception as e:
+                logger.error(f"Error sending photo: {e}")
+                # Если ошибка с фото - отправляем без него
+                await query.edit_message_text(
+                    text,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+        else:
+            # Без фото - обычное сообщение
+            await query.edit_message_text(
+                text,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
 
     except Exception as e:
         logger.error(f"Error showing book detail: {e}")

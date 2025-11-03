@@ -13,8 +13,9 @@ from . import profile
 from . import admin
 from . import notifications
 from . import common
+from . import book_management
 
 __all__ = ['catalog', 'search', 'booking',
            'my_bookings', 'new_books', 'personalized',
            'profile', 'admin', 'notifications',
-           'common']
+           'common', 'book_management']

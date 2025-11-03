@@ -21,6 +21,11 @@ from bot.handlers import notifications
 
 logger = logging.getLogger(__name__)
 
+# Состояния для добавления книги
+ADD_BOOK_TITLE, ADD_BOOK_AUTHOR, ADD_BOOK_CATEGORY, ADD_BOOK_PRICE, ADD_BOOK_DESCRIPTION, ADD_BOOK_GENRES, ADD_BOOK_PHOTO = range(7, 14)
+
+# Состояния для редактирования книги
+EDIT_BOOK_ID, EDIT_BOOK_FIELD, EDIT_BOOK_VALUE = range(14, 17)
 
 def is_admin(user_id: int) -> bool:
     """Проверка что пользователь - администратор"""
@@ -81,6 +86,10 @@ async def show_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton("👥 Пользователи", callback_data="admin_users"),
             InlineKeyboardButton("📊 Детальная статистика", callback_data="admin_detailed_stats")
+        ],
+        # ДОБАВЬ ЭТУ СТРОКУ:
+        [
+            InlineKeyboardButton("📚 Управление книгами", callback_data="bookmgmt_menu")
         ],
         [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]
     ]
@@ -376,3 +385,4 @@ async def test_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(
             f"❌ Ошибка при тестировании:\n{str(e)}"
         )
+

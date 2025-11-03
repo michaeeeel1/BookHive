@@ -28,7 +28,7 @@ from bot.handlers import (
     catalog, search, booking,
     my_bookings, new_books, personalized,
     profile, admin, notifications,
-    common
+    common, book_management
 )
 from bot.utils.logger import setup_logger
 
@@ -482,6 +482,96 @@ def main():
 
     application.add_handler(genres_conv_handler)
 
+    # ConversationHandler для добавления книги
+    add_book_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(book_management.add_book_start, pattern="^bookmgmt_add$")
+        ],
+        states={
+            book_management.BOOK_TITLE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_book_title)
+            ],
+            book_management.BOOK_AUTHOR: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_book_author)
+            ],
+            book_management.BOOK_PRICE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_book_price)
+            ],
+            book_management.BOOK_CATEGORY: [
+                CallbackQueryHandler(book_management.add_book_category)
+            ],
+            book_management.BOOK_DESCRIPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_book_description),
+                CallbackQueryHandler(book_management.add_book_description)
+            ],
+            book_management.BOOK_GENRES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_book_genres),
+                CallbackQueryHandler(book_management.add_book_genres)
+            ],
+            book_management.BOOK_CONFIRM: [
+                CallbackQueryHandler(book_management.add_book_confirm)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(book_management.cancel_book_operation, pattern="^bookmgmt_cancel$"),
+            CommandHandler("start", common.cancel_operation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),
+        ],
+        allow_reentry=True,
+        per_message=False
+    )
+
+    application.add_handler(add_book_conv_handler)
+
+    # ConversationHandler для добавления фото
+    add_photo_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(book_management.add_photo_to_book_start, pattern="^bookmgmt_add_photo$"),
+            CallbackQueryHandler(book_management.add_photo_to_book_start, pattern="^photomgmt_start_\d+$")
+        ],
+        states={
+            book_management.BOOK_ID_FOR_PHOTO: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.add_photo_get_book_id)
+            ],
+            book_management.BOOK_PHOTO: [
+                MessageHandler(filters.PHOTO, book_management.add_photo_receive)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(book_management.cancel_book_operation, pattern="^bookmgmt_cancel$"),
+            CommandHandler("start", common.cancel_operation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),
+        ],
+        allow_reentry=True,
+        per_message=False
+    )
+
+    application.add_handler(add_photo_conv_handler)
+
+    # ConversationHandler для удаления книги
+    delete_book_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(book_management.delete_book_start, pattern="^bookmgmt_delete$")
+        ],
+        states={
+            book_management.BOOK_ID_FOR_DELETE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, book_management.delete_book_get_id)
+            ],
+            book_management.BOOK_CONFIRM: [
+                CallbackQueryHandler(book_management.delete_book_confirm)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(book_management.cancel_book_operation, pattern="^bookmgmt_cancel$"),
+            CommandHandler("start", common.cancel_operation),
+            MessageHandler(filters.COMMAND, common.cancel_operation),
+        ],
+        allow_reentry=True,
+        per_message=False
+    )
+
+    application.add_handler(delete_book_conv_handler)
+
     # ============================================
     # COMMAND HANDLERS
     # ============================================
@@ -492,6 +582,7 @@ def main():
     application.add_handler(CommandHandler("test_notifications", admin.test_notifications))
     application.add_handler(CommandHandler("stats", profile.show_user_stats))
     application.add_handler(CommandHandler("about", about_handler))
+    application.add_handler(CommandHandler("manage_books", book_management.show_book_management_menu))
 
     # ============================================
     # CALLBACK HANDLERS
@@ -518,6 +609,10 @@ def main():
     application.add_handler(CallbackQueryHandler(admin.show_all_books, pattern="^admin_books$"))
     application.add_handler(CallbackQueryHandler(admin.show_all_users, pattern="^admin_users$"))
     application.add_handler(CallbackQueryHandler(admin.show_detailed_stats, pattern="^admin_detailed_stats$"))
+
+    application.add_handler(CallbackQueryHandler(book_management.show_book_management_menu, pattern="^bookmgmt_menu$"))
+    application.add_handler(CallbackQueryHandler(book_management.list_all_books, pattern="^bookmgmt_list$"))
+    application.add_handler(CallbackQueryHandler(book_management.toggle_book_start, pattern="^bookmgmt_toggle$"))
 
     # Обработчик кнопки "Главное меню"
     application.add_handler(CallbackQueryHandler(back_to_main_menu_handler, pattern="^main_menu$"))

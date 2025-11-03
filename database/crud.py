@@ -330,6 +330,7 @@ def create_book(
         cover_photo_id: Optional[str] = None,
         genres: Optional[List[str]] = None,
         is_new: bool = False,
+        is_available: bool = True
 ) -> Book:
     """
         Создать книгу
@@ -343,6 +344,7 @@ def create_book(
             cover_photo_id: file_id обложки
             genres: Список жанров
             is_new: Новинка?
+            is_available: Доступна? (по умолчанию True)
 
         Returns:
             Book: Объект книги
@@ -569,13 +571,20 @@ def get_new_books(days: int = 7, limit: int = 10) -> List[Book]:
         return books
 
 
-def update_book(book_id: int, **kwargs) -> Optional[Book]:
+# ============================================
+# BOOK MANAGEMENT (UPDATE/DELETE)
+# ============================================
+
+def update_book(
+        book_id: int,
+        **kwargs
+) -> Optional[Book]:
     """
-    Обновить книгу
+    Обновить данные книги
 
     Args:
         book_id: ID книги
-        **kwargs: Поля для обновления
+        **kwargs: Поля для обновления (title, author, price, description, etc.)
 
     Returns:
         Book или None
@@ -584,6 +593,7 @@ def update_book(book_id: int, **kwargs) -> Optional[Book]:
         book = session.query(Book).filter_by(id=book_id).first()
 
         if not book:
+            logger.warning(f"Book {book_id} not found for update")
             return None
 
         # Обновляем только переданные поля
@@ -593,7 +603,59 @@ def update_book(book_id: int, **kwargs) -> Optional[Book]:
 
         session.commit()
         session.refresh(book)
-        logger.info(f"Updated book: {book_id}")
+
+        logger.info(f"Updated book {book_id}: {book.title}")
+        return book
+
+
+def update_book_photo(book_id: int, photo_file_id: str) -> Optional[Book]:
+    """
+    Обновить фото обложки книги
+
+    Args:
+        book_id: ID книги
+        photo_file_id: Telegram file_id фото
+
+    Returns:
+        Book или None
+    """
+    with get_session() as session:
+        book = session.query(Book).filter_by(id=book_id).first()
+
+        if not book:
+            logger.warning(f"Book {book_id} not found for photo update")
+            return None
+
+        book.cover_photo_id = photo_file_id
+        session.commit()
+        session.refresh(book)
+
+        logger.info(f"Updated photo for book {book_id}: {book.title}")
+        return book
+
+
+def remove_book_photo(book_id: int) -> Optional[Book]:
+    """
+    Удалить фото обложки книги
+
+    Args:
+        book_id: ID книги
+
+    Returns:
+        Book или None
+    """
+    with get_session() as session:
+        book = session.query(Book).filter_by(id=book_id).first()
+
+        if not book:
+            logger.warning(f"Book {book_id} not found for photo removal")
+            return None
+
+        book.cover_photo_id = None
+        session.commit()
+        session.refresh(book)
+
+        logger.info(f"Removed photo from book {book_id}: {book.title}")
         return book
 
 
@@ -605,18 +667,32 @@ def delete_book(book_id: int) -> bool:
         book_id: ID книги
 
     Returns:
-        True если удалена, False если не найдена
+        True если успешно, False если нет
     """
     with get_session() as session:
         book = session.query(Book).filter_by(id=book_id).first()
 
-        if book:
-            session.delete(book)
-            session.commit()
-            logger.info(f"Deleted book: {book_id}")
-            return True
+        if not book:
+            logger.warning(f"Book {book_id} not found for deletion")
+            return False
 
-        return False
+        book_title = book.title
+
+        # Проверяем есть ли активные брони на эту книгу
+        active_bookings = session.query(Booking).filter_by(
+            book_id=book_id,
+            status='active'
+        ).count()
+
+        if active_bookings > 0:
+            logger.warning(f"Cannot delete book {book_id}: has {active_bookings} active bookings")
+            return False
+
+        session.delete(book)
+        session.commit()
+
+        logger.info(f"Deleted book {book_id}: {book_title}")
+        return True
 
 
 def get_books_count() -> int:
@@ -624,10 +700,11 @@ def get_books_count() -> int:
     Получить общее количество книг
 
     Returns:
-        Количество
+        Количество книг
     """
     with get_session() as session:
-        return session.query(Book).count()
+        count = session.query(Book).count()
+        return count
 
 # BOOKING CRUD
 
